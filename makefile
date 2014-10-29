@@ -1,2 +1,2 @@
 all:
-	gcc -Wall relaxation.c -o relaxation.out
+	gcc -Wall relax.c -o relax.out

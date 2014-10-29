@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-
 /*
  * Print the matrix to stdout
  */
@@ -61,11 +60,9 @@ void destroyMatrix(float **matrix, int size)
 {
     for (int i = 0; i < size; i++)
     {
-        for (int j = 0; j < size; j++)
-        {
-            matrix[i][j] = (float) 0;
-        }
+        free(matrix[i]);
     }
+    free(matrix);
 }
 
 

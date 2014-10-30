@@ -25,7 +25,8 @@ float** createMatrix(int size)
     /*if (matrix == NULL) { fprintf(stderr, "out of memory\n"); }*/
 
     // allocate memory for each column
-    for (int i = 0; i < size; i++)
+    int i, j;
+    for (i = 0; i < size; i++)
     {
         matrix[i] = malloc(size * sizeof(float));
         /*if (matrix[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
@@ -38,9 +39,9 @@ float** createMatrix(int size)
      * program
      */
     srand(time(NULL));
-    for (int i = 0; i < size; i++)
+    for (i = 0; i < size; i++)
     {
-        for (int j = 0; j < size; j++)
+        for (j = 0; j < size; j++)
         {
             matrix[i][j] = (float) (rand() % 5);
         }
@@ -55,7 +56,8 @@ float** createMatrix(int size)
  */
 void destroyMatrix(float **matrix, int size)
 {
-    for (int i = 0; i < size; i++)
+    int i;
+    for (i = 0; i < size; i++)
     {
         free(matrix[i]);
     }
@@ -68,9 +70,10 @@ void destroyMatrix(float **matrix, int size)
  */
 void printMatrix(float **matrix, int size)
 {
-    for (int i = 0; i < size; i++)
+    int i, j;
+    for (i = 0; i < size; i++)
     {
-        for (int j = 0; j < size; j++)
+        for (j = 0; j < size; j++)
         {
             // only print 2dp to save screen space
             printf("%.2f\t", matrix[i][j]);
@@ -79,6 +82,18 @@ void printMatrix(float **matrix, int size)
     }
 }
 
+void printInnerMatrix(float **matrix, int size)
+{
+    int i, j;
+    for (i = 1; i < size - 1; i++)
+    {
+        for (j = 1; j < size - 1; j++)
+        {
+            printf("%.2f\t", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
 
 
 /*
@@ -113,6 +128,8 @@ int main(int argc, char **argv) {
 
     float **matrix = createMatrix(size);
     printMatrix(matrix, size);
+    printf("\n");
+    printInnerMatrix(matrix, size);
 
     return 0;
 }

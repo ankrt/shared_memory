@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-/*#include <getopt.h>*/
-/*#include <time.h>*/
+#include <getopt.h>
+#include <time.h>
 
 
 /*
@@ -16,7 +16,7 @@ void printUsage() {
 /*
  * Create a matrix of given size
  */
-float** createMatrix(int size, int *array)
+float** createMatrix(int size)
 {
     float **matrix;
 
@@ -32,17 +32,20 @@ float** createMatrix(int size, int *array)
         /*if (matrix[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
     }
 
-    int count = 0;
-    // populate the matrix with numbers from array
+    /*
+     * populate matrix with values
+     * this will be removed as array will
+     * eventually be passed directly to the
+     * program
+     */
+    srand(time(NULL));
     for (i = 0; i < size; i++)
     {
         for (j = 0; j < size; j++)
         {
-            matrix[i][j] = array[count];
-            count++;
+            matrix[i][j] = (float) (rand() % 5);
         }
     }
-
 
     return matrix;
 }
@@ -103,42 +106,35 @@ void printInnerMatrix(float **matrix, int size)
  */
 int main(int argc, char **argv) {
 
-    if (argc < 4)
-    {
-        fprintf(stderr, "Error: Too few arguments\n");
-        exit(1);
+    int opt = 0;
+    int threads = -1, size = -1, precision = -1;
+
+    // handle command line arguments
+    while ((opt = getopt(argc, argv,"s:t:p:")) != -1) {
+        switch (opt) {
+            case 's' :
+                size = atoi(optarg);
+                break;
+            case 't' :
+                threads = atoi(optarg);
+                break;
+            case 'p' :
+                precision = atoi(optarg);
+                break;
+            default:
+                printUsage();
+                exit(EXIT_FAILURE);
+        }
+    }
+    if (size == -1 || threads == -1 || precision == -1) {
+        printUsage();
+        exit(EXIT_FAILURE);
     }
 
-    int size, threads, precision, arrayLength;
-
-    size = atoi(argv[1]);
-    threads = atoi(argv[2]);
-    precision = atoi(argv[3]);
-    arrayLength = size * size;
-
-    printf("%d%s", argc - arrayLength, "\n");
-    if (argc - arrayLength != 4)
-    {
-        fprintf(stderr, "Erorr: Size and array length do not match\n");
-        exit(1);
-    }
-
-    // print information to stdout, for debug purposes
-    printf("Size: %d by %d\n", size, size);
-    printf("Threads: %d\n", threads);
-    printf("Precision: %d\n", precision);
-
-    int *array = malloc(arrayLength * sizeof(int));
-    int i;
-    for (i = 0; i < arrayLength; i++)
-    {
-        array[i] = atoi(argv[i + 4]);
-    }
-
-    float **matrix = createMatrix(size, array);
+    float **matrix = createMatrix(size);
     printMatrix(matrix, size);
-    free(array);
-    destroyMatrix(matrix, size);
+
+    // decide how to split up the matrix
 
     return 0;
 }

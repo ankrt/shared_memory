@@ -34,7 +34,7 @@ float** createMatrix(int size)
 
     /*
      * populate matrix with values
-     * this will be remove as array will
+     * this will be removed as array will
      * eventually be passed directly to the
      * program
      */
@@ -82,6 +82,11 @@ void printMatrix(float **matrix, int size)
     }
 }
 
+
+/*
+ * Print the inner matrix
+ * debug purposes
+ */
 void printInnerMatrix(float **matrix, int size)
 {
     int i, j;
@@ -128,8 +133,8 @@ int main(int argc, char **argv) {
 
     float **matrix = createMatrix(size);
     printMatrix(matrix, size);
-    printf("\n");
-    printInnerMatrix(matrix, size);
+
+    // decide how to split up the matrix
 
     return 0;
 }

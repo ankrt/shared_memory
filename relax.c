@@ -106,6 +106,8 @@ int innerSize(int size)
 
 /*
  * 'Partition' the matrix so each thread has roughly equal work
+ * returns data structure:
+ *  array[t] -> {startingRow, partitionLength}
  */
 int* partitionMatrix(float **matrix, int size, int t)
 {
@@ -132,6 +134,9 @@ int* partitionMatrix(float **matrix, int size, int t)
 
 /*
  * Main
+ * TODO:
+ *  - Remove automatic generation of maitrces for final submission
+ *  - Use more precise number format
  */
 int main(int argc, char **argv)
 {

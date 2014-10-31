@@ -2,14 +2,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 /*#include <getopt.h>*/
-/*#include <time.h>*/
+#include <time.h>
 
 
 /*
- * Print program usage to the terminal
+ * Print a matrix of given size to stdout
  */
-void printUsage() {
-    printf("Usage: rectangle -s size -t threads -p precision\n");
+void printMatrix(float **matrix, int size)
+{
+    int i, j;
+    for (i = 0; i < size; i++)
+    {
+        for (j = 0; j < size; j++)
+        {
+            // only print 2dp to save screen space
+            if (i > 0 && j > 0 && i < size - 1 && j < size - 1)
+            {
+                // print inner matrix in different colour
+                printf("\033[30;1m%.2f\033[0m\t", matrix[i][j]);
+            }
+            else
+            {
+                printf("%.2f\t", matrix[i][j]);
+            }
+        }
+        printf("\n");
+    }
 }
 
 
@@ -42,11 +60,25 @@ float** createMatrix(int size, int *array)
             count++;
         }
     }
-
-
     return matrix;
 }
 
+
+/*
+ * Create an array of a given length
+ * populate with random ints
+ */
+int* createArray(int length)
+{
+    srand(time(NULL));
+    int *array = malloc(length * sizeof(int));
+    int i;
+    for (i = 0; i < length; i++)
+    {
+        array[i] = rand() % 5;
+    }
+    return array;
+}
 
 /*
  * Destroy a matrix of given size
@@ -63,82 +95,133 @@ void destroyMatrix(float **matrix, int size)
 
 
 /*
- * Print a matrix of given size to stdout
+ * Find the inner size of a matrix
+ * really simple, but saves on confusion
  */
-void printMatrix(float **matrix, int size)
+int innerSize(int size)
 {
-    int i, j;
-    for (i = 0; i < size; i++)
-    {
-        for (j = 0; j < size; j++)
-        {
-            // only print 2dp to save screen space
-            printf("%.2f\t", matrix[i][j]);
-        }
-        printf("\n");
-    }
+    return size - 2;
 }
 
 
 /*
- * Print the inner matrix
- * debug purposes
+ * 'Partition' the matrix so each thread has roughly equal work admittedly
+ * TODO: make this allocate more evenly!
  */
-void printInnerMatrix(float **matrix, int size)
+int* partitionMatrix(float **matrix, int size, int t)
 {
-    int i, j;
-    for (i = 1; i < size - 1; i++)
+    int iSize = innerSize(size);
+    int *rowAllocation = malloc((iSize - 1) * sizeof(int));
+
+    int i, equalRation, unequalRation, equallyPartitionedThreads;
+    // if t divides equally into iSize then each
+    // thread can work on an equal numer of rows
+    if (iSize % t == 0)
     {
-        for (j = 1; j < size - 1; j++)
+        for (i = 0; i < t; i++)
         {
-            printf("%.2f\t", matrix[i][j]);
+            rowAllocation[i] = iSize / t;
         }
-        printf("\n");
     }
+    else if (iSize > t) // t - 1 equally partitioned threads
+    {
+        equallyPartitionedThreads = t - 1;
+        equalRation = iSize / equallyPartitionedThreads;
+        // a single thread can be partitioned all rows, so stop this
+        if (equallyPartitionedThreads == 1) equalRation--;
+        for (i = 0; i < equallyPartitionedThreads; i++)
+        {
+            rowAllocation[i] = equalRation;
+        }
+        // one remaining thread will work on the remaining rows
+        unequalRation = iSize - (equallyPartitionedThreads * equalRation);
+        if (unequalRation == 0)
+        {
+            // 'steal' a row from another thread's partition
+            rowAllocation[0]--;
+            rowAllocation[t - 1]++;
+        }
+        else
+        {
+            rowAllocation[t - 1] = unequalRation;
+        }
+    }
+    else
+    {
+        // not possible to split matrix into this many sections
+        fprintf(stderr,
+                "There are more threads than rows! "
+                "Please use a bigger matrix or fewer threads.\n");
+        exit(1);
+    }
+    return rowAllocation;
 }
 
 
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
+    int size, threads, precision, arrayLength;
+    int *array;
+    int i;
+    int arrayPassed = 0;
 
-    if (argc < 4)
+    if (argc < 4) // too few arguments
     {
         fprintf(stderr, "Error: Too few arguments\n");
         exit(1);
     }
-
-    int size, threads, precision, arrayLength;
-
-    size = atoi(argv[1]);
-    threads = atoi(argv[2]);
-    precision = atoi(argv[3]);
-    arrayLength = size * size;
-
-    printf("%d%s", argc - arrayLength, "\n");
-    if (argc - arrayLength != 4)
+    else if (argc > 4) // array is passed at CL
     {
-        fprintf(stderr, "Erorr: Size and array length do not match\n");
-        exit(1);
+        arrayPassed = 1;
+        size = atoi(argv[1]);
+        threads = atoi(argv[2]);
+        precision = atoi(argv[3]);
+        arrayLength = size * size;
+        if (argc - arrayLength != 4 || size < 3)
+        {
+            fprintf(stderr, "Error: Bad array length\n");
+            exit(1);
+        }
+        array = malloc(arrayLength * sizeof(int));
+        for (i = 0; i < arrayLength; i++)
+        {
+            array[i] = atoi(argv[i + 4]);
+        }
+    }
+    else // array not passed, generate randomly
+    {
+        size = atoi(argv[1]);
+        threads = atoi(argv[2]);
+        precision = atoi(argv[3]);
+        arrayLength = size * size;
+        array = createArray(arrayLength);
     }
 
+
     // print information to stdout, for debug purposes
-    printf("Size: %d by %d\n", size, size);
+    printf("Size: %dx%d\n", size, size);
     printf("Threads: %d\n", threads);
     printf("Precision: %d\n", precision);
 
-    int *array = malloc(arrayLength * sizeof(int));
-    int i;
-    for (i = 0; i < arrayLength; i++)
-    {
-        array[i] = atoi(argv[i + 4]);
-    }
 
     float **matrix = createMatrix(size, array);
-    printMatrix(matrix, size);
-    free(array);
-    destroyMatrix(matrix, size);
 
+    // Work out how to split the matrix so
+    // each thread works on it ~equally
+    int *rowAllocation = partitionMatrix(matrix, size, threads);
+    for (i = 0; i < threads; i++)
+    {
+        printf("Thread %d of %d will work on %d rows\n",
+                i + 1,
+                threads,
+                rowAllocation[i]);
+    }
+    /*printMatrix(matrix, size);*/
+    destroyMatrix(matrix, size);
+    free(rowAllocation);
+    free(array);
     return 0;
 }

@@ -105,54 +105,26 @@ int innerSize(int size)
 
 
 /*
- * 'Partition' the matrix so each thread has roughly equal work admittedly
- * TODO: make this allocate more evenly!
+ * 'Partition' the matrix so each thread has roughly equal work
  */
 int* partitionMatrix(float **matrix, int size, int t)
 {
-    int iSize = innerSize(size);
-    int *rowAllocation = malloc((iSize - 1) * sizeof(int));
+    int inrSize = innerSize(size);
+    int unallocatedRows = inrSize;
+    int currentThread = 0;
+    int i;
 
-    int i, equalRation, unequalRation, equallyPartitionedThreads;
-    // if t divides equally into iSize then each
-    // thread can work on an equal numer of rows
-    if (iSize % t == 0)
+    int *rowAllocation = malloc(inrSize * sizeof(int));
+    for (i = 0; i < inrSize; i++) rowAllocation[i] = 0;
+
+    // while there are rows that have not been allocaded
+    while (unallocatedRows > 0)
     {
-        for (i = 0; i < t; i++)
-        {
-            rowAllocation[i] = iSize / t;
-        }
-    }
-    else if (iSize > t) // t - 1 equally partitioned threads
-    {
-        equallyPartitionedThreads = t - 1;
-        equalRation = iSize / equallyPartitionedThreads;
-        // a single thread can be partitioned all rows, so stop this
-        if (equallyPartitionedThreads == 1) equalRation--;
-        for (i = 0; i < equallyPartitionedThreads; i++)
-        {
-            rowAllocation[i] = equalRation;
-        }
-        // one remaining thread will work on the remaining rows
-        unequalRation = iSize - (equallyPartitionedThreads * equalRation);
-        if (unequalRation == 0)
-        {
-            // 'steal' a row from another thread's partition
-            rowAllocation[0]--;
-            rowAllocation[t - 1]++;
-        }
-        else
-        {
-            rowAllocation[t - 1] = unequalRation;
-        }
-    }
-    else
-    {
-        // not possible to split matrix into this many sections
-        fprintf(stderr,
-                "There are more threads than rows! "
-                "Please use a bigger matrix or fewer threads.\n");
-        exit(1);
+        // give the current thread an extra row
+        rowAllocation[currentThread]++;
+        unallocatedRows--;
+        currentThread++; // next thread, loop to start if needed
+        if (currentThread == t) currentThread = 0;
     }
     return rowAllocation;
 }

@@ -4,6 +4,10 @@
 #include <time.h>
 #include <unistd.h>
 
+struct workRange {
+    int start;
+    int end;
+};
 
 /*
  * Print a matrix of given size to stdout
@@ -107,7 +111,7 @@ int innerSize(int size)
 /*
  * 'Partition' the matrix so each thread has roughly equal work
  */
-int* partitionMatrix(float **matrix, int size, int t)
+struct workRange* partitionMatrix(float **matrix, int size, int t)
 {
     int inrSize = innerSize(size);
     int unallocatedRows = inrSize;
@@ -126,7 +130,24 @@ int* partitionMatrix(float **matrix, int size, int t)
         currentThread++; // next thread, loop to start if needed
         if (currentThread == t) currentThread = 0;
     }
-    return rowAllocation;
+
+    // work out start/end points
+    struct workRange *ranges = malloc(t * sizeof(struct workRange));
+    for (i = 0; i < t; i++)
+    {
+        if (t == 0)
+        {
+            ranges[i].start = 1;
+            ranges[i].end = ranges[i].start + rowAllocation[i];
+        }
+        else
+        {
+            ranges[i].start = ranges[i - 1].start + rowAllocation[i - 1];
+            ranges[i].end = ranges[i].start + rowAllocation[i];
+        }
+    }
+    free(rowAllocation);
+    return ranges;
 }
 
 
@@ -185,17 +206,19 @@ int main(int argc, char **argv)
 
     // Work out how to split the matrix so
     // each thread works on it ~equally
-    int *rowAllocation = partitionMatrix(matrix, size, threads);
+    struct workRange *ranges = partitionMatrix(matrix, size, threads);
     for (i = 0; i < threads; i++)
     {
-        printf("Thread %d of %d will work on %d rows\n",
+        printf("Thread %d of %d will work on rows %d to %d\n",
                 i + 1,
                 threads,
-                rowAllocation[i]);
+                ranges[i].start,
+                ranges[i].end
+                );
     }
     /*printMatrix(matrix, size);*/
     destroyMatrix(matrix, size);
-    free(rowAllocation);
     free(array);
+    free(ranges);
     return 0;
 }

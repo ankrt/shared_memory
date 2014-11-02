@@ -1,4 +1,5 @@
 /*#include <getopt.h>*/
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,15 +12,12 @@ struct range {
 };
 
 struct matrices {
-        float **imat;
-        float **rmat;
+        double **imat;
+        double **rmat;
         int size;
 };
 
-/*
- * Print a matrix of given size to stdout
- */
-void printmat(float **mat, int size)
+void printmat(double **mat, int size)
 {
         int i, j;
         for (i = 0; i < size; i++) {
@@ -33,13 +31,13 @@ void printmat(float **mat, int size)
 /*
  * Create a matrix of given size
  */
-float** createmat(int size)
+double** createmat(int size)
 {
         int i;
-        float **mat;
-        mat = malloc(size * sizeof(float *));
+        double **mat;
+        mat = malloc(size * sizeof(double *));
         for (i = 0; i < size; i++) {
-                mat[i] = malloc(size * sizeof(float));
+                mat[i] = malloc(size * sizeof(double));
                 /*if (mat[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
         }
         return mat;
@@ -48,7 +46,7 @@ float** createmat(int size)
 /*
  * Initialise a matrix with values
  */
-void initmat(float **mat, int size, int *arr)
+void initmat(double **mat, int size, int *arr)
 {
         int i, j;
         int tmp = 0;
@@ -77,7 +75,7 @@ int* createarr(int size)
 /*
  * freemat a matrix of given size
  */
-void freemat(float **mat, int size)
+void freemat(double **mat, int size)
 {
         int i;
         for (i = 0; i < size; i++) {
@@ -142,7 +140,7 @@ struct range* partmat(int size, int numthr)
 void relax(struct matrices *mats, struct range r)
 {
         int i, j;
-        float sum, avg;
+        double sum, avg;
 
         for (i = r.start; i < r.end; i++) {
                 for (j = 1; j < mats->size - 1; j++) {
@@ -156,23 +154,31 @@ void relax(struct matrices *mats, struct range r)
         }
 }
 
-int check(struct matrices *mats, float prec)
+int check(struct matrices *mats, double prec)
 {
         int i, j;
-        float diff;
-        int matching = 1;
-        float tolerance = 1 / prec;
+        double diff;
+        int matching = 0;
+        double tolerance = 1 / prec;
 
         for (i = 0; i < mats->size; i++) {
                 for (j = 0; j < mats->size; j++) {
-                        diff = abs(mats->imat[i][j] - mats->rmat[i][j]);
+                        diff = fabs(mats->imat[i][j] - mats->rmat[i][j]);
                         if (diff > tolerance) {
-                                matching = 0;
-                                break;
+                                matching = 1;
+                                return matching;
                         }
                 }
         }
         return matching;
+}
+
+void swap(struct matrices *mats)
+{
+        double **tmp;
+        tmp = mats->imat;
+        mats->imat = mats->rmat;
+        mats->rmat = tmp;
 }
 
 
@@ -208,16 +214,12 @@ int main(int argc, char **argv)
         mats->size = size;
         initmat(mats->imat, mats->size, arr);
         initmat(mats->rmat, mats->size, arr);
-
-        /*float **imat = createmat(size);*/
-        /*float **rmat = createmat(size);*/
-        /*initmat(imat, size, arr);*/
-        /*initmat(rmat, size, arr);*/
+        free(arr);
 
         // Partition matrix so each thread works equally
         struct range *ranges = partmat(size, numthr);
         for (i = 0; i < numthr; i++) {
-                printf("Thread %d of %d will work on rows %d to %d\n",
+                printf("Thread %d of %d will work on rows %d <= r < %d\n",
                         i + 1,
                         numthr,
                         ranges[i].start,
@@ -225,16 +227,22 @@ int main(int argc, char **argv)
                       );
         }
 
-        printmat(mats->imat, size);
-        relax(mats, ranges[0]);
-        printf("\n");
-        printmat(mats->rmat, size);
-        printf("%d\n", check(mats, prec));
+        int iterations = 0;
+        do {
+                /*printmat(mats->imat, size);*/
+                /*sleep(1);*/
+                relax(mats, ranges[0]);
+                /*printf("\n");*/
+                swap(mats);
+                iterations++;
+        } while (check(mats, prec));
+        printf("%d\n", iterations);
+
+
 
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);
         free(mats);
-        free(arr);
         free(ranges);
         return 0;
 }

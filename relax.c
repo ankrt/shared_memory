@@ -1,106 +1,86 @@
 /*#include <getopt.h>*/
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
-struct workRange {
-    int start;
-    int end;
+struct range {
+        int start;
+        int end;
 };
 
 /*
  * Print a matrix of given size to stdout
  */
-void printMatrix(float **matrix, int size)
+void printmat(float **mat, int size)
 {
-    int i, j;
-    for (i = 0; i < size; i++)
-    {
-        for (j = 0; j < size; j++)
-        {
-            // only print 2dp to save screen space
-            if (i > 0 && j > 0 && i < size - 1 && j < size - 1)
-            {
-                // print inner matrix in different colour
-                /*printf("\033[30;1m%.2f\033[0m\t", matrix[i][j]);*/
-                printf("%f\t", matrix[i][j]);
-            }
-            else
-            {
-                printf("%f\t", matrix[i][j]);
-            }
+        int i, j;
+        for (i = 0; i < size; i++) {
+                for (j = 0; j < size; j++) {
+                        printf("%f\t", mat[i][j]);
+                }
+                printf("\n");
         }
-        printf("\n");
-    }
 }
-
 
 /*
  * Create a matrix of given size
  */
-float** createMatrix(int size)
+float** createmat(int size)
 {
-    float **matrix;
-
-    // allocate memory for each row
-    matrix = malloc(size * sizeof(float *));
-    // allocate memory for each column
-    int i;
-    for (i = 0; i < size; i++)
-    {
-        matrix[i] = malloc(size * sizeof(float));
-        /*if (matrix[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
-    }
-    return matrix;
+        int i;
+        float **mat;
+        mat = malloc(size * sizeof(float *));
+        for (i = 0; i < size; i++) {
+                mat[i] = malloc(size * sizeof(float));
+                /*if (mat[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
+        }
+        return mat;
 }
 
 
 /*
  * Initialise a matrix with values
  */
-void initMatrix(float **matrix, int size, int *array)
+void initmat(float **mat, int size, int *arr)
 {
-    int i, j;
-    int currentPosition = 0; // within the array
-    for (i = 0; i < size; i++)
-    {
-        for (j = 0; j < size; j++)
-        {
-            matrix[i][j] = array[currentPosition];
-            currentPosition++;
+        int i, j;
+        int tmp = 0;
+        for (i = 0; i < size; i++) {
+                for (j = 0; j < size; j++) {
+                        mat[i][j] = arr[tmp];
+                        tmp++;
+                }
         }
-    }
 }
 
 
 /*
- * Create an array of a given length
- * populate with random ints
+ * Create an arr of a given length
  */
-int* createArray(int length)
+int* createarr(int size)
 {
-    srand(time(NULL));
-    int *array = malloc(length * sizeof(int));
-    int i;
-    for (i = 0; i < length; i++)
-    {
-        array[i] = rand() % 5;
-    }
-    return array;
+        int i;
+        int *arr = malloc(size * sizeof(int));
+        srand(time(NULL));
+        for (i = 0; i < size; i++) {
+                arr[i] = rand() % 5;
+        }
+        return arr;
 }
 
+
 /*
- * Destroy a matrix of given size
+ * freemat a matrix of given size
  */
-void destroy(float **matrix, int size)
+void freemat(float **mat, int size)
 {
-    int i;
-    for (i = 0; i < size; i++)
-    {
-        free(matrix[i]);
-    }
-    free(matrix);
+        int i;
+        for (i = 0; i < size; i++) {
+                free(mat[i]);
+        }
+        free(mat);
 }
 
 
@@ -108,75 +88,87 @@ void destroy(float **matrix, int size)
  * Find the inner size of a matrix
  * really simple, but saves on confusion
  */
-int innerSize(int size)
+int inrsize(int size)
 {
-    return size - 2;
+        return size - 2;
 }
 
 
 /*
  * 'Partition' the matrix so each thread has roughly equal work
  */
-struct workRange* partitionMatrix(int size, int t)
+struct range* partmat(int size, int numthr)
 {
-    int inrSize = innerSize(size);
-    int unallocatedRows = inrSize;
-    int currentThread = 0;
-    int i;
+        int isize = inrsize(size);
+        int unallocated = isize;
+        int currthr = 0;
+        int i;
 
-    int *workAllocation = malloc(inrSize * sizeof(int));
-    for (i = 0; i < inrSize; i++) workAllocation[i] = 0;
-
-    // while there are rows that have not been allocaded
-    while (unallocatedRows > 0)
-    {
-        // give the current thread an extra row
-        workAllocation[currentThread]++;
-        unallocatedRows--;
-        currentThread++; // next thread, loop to start if needed
-        if (currentThread == t) currentThread = 0;
-    }
-
-    // work out start/end points
-    struct workRange *ranges = malloc(t * sizeof(struct workRange));
-    for (i = 0; i < t; i++)
-    {
-        if (i == 0)
-        {
-            ranges[i].start = 1;
-            ranges[i].end = ranges[i].start + workAllocation[i];
+        int *allocation = malloc(isize * sizeof(int));
+        for (i = 0; i < isize; i++) {
+                allocation[i] = 0;
         }
-        else
-        {
-            ranges[i].start = ranges[i - 1].start + workAllocation[i - 1];
-            ranges[i].end = ranges[i].start + workAllocation[i];
+
+        while (unallocated > 0) {
+                allocation[currthr]++;
+                unallocated--;
+                currthr++;
+                if (currthr == numthr) currthr = 0;
         }
-    }
-    free(workAllocation);
-    return ranges;
+
+        // work out start/end points
+        struct range *ranges = malloc(numthr * sizeof(struct range));
+        for (i = 0; i < numthr; i++) {
+                if (i == 0) {
+                        ranges[i].start = 1;
+                        ranges[i].end = ranges[i].start + allocation[i];
+                } else {
+                        ranges[i].start = ranges[i - 1].start + allocation[i - 1];
+                        ranges[i].end = ranges[i].start + allocation[i];
+                }
+        }
+        free(allocation);
+        return ranges;
 }
 
 
 /*
  * Relax. Calculate the averages for rows in a given range
  */
-void relax(float **imatrix, float **rmatrix, int size, struct workRange wr)
+void relax(float **imat, float **rmat, int size, struct range r)
 {
-    int i, j;
-    float sum, avg;
+        int i, j;
+        float sum, avg;
 
-    for (i = wr.start; i < wr.end; i++)
-    {
-        for (j = 1; j < size - 1; j++)
-        {
-            sum = imatrix[i - 1][j] // north
-                + imatrix[i][j + 1] // east
-                + imatrix[i + 1][j] // south
-                + imatrix[i][j - 1];// west
-            avg = sum / 4;
-            rmatrix[i][j] = avg;
+        for (i = r.start; i < r.end; i++) {
+                for (j = 1; j < size - 1; j++) {
+                        sum = imat[i - 1][j]
+                                + imat[i][j + 1]
+                                + imat[i + 1][j]
+                                + imat[i][j - 1];
+                        avg = sum / 4;
+                        rmat[i][j] = avg;
+                }
         }
-    }
+}
+
+int check(float **imat, float **rmat, int size, float prec)
+{
+        int i, j;
+        float diff;
+        int matching = 0;
+
+        for (i = 0; i < size; i++) {
+                for (j = 0; j < size; j++) {
+                        diff = abs(imat[i][j] - rmat[i][j]);
+                        if (diff < (1 / prec)) {
+                                matching = 1;
+                        } else {
+                                matching = 0;
+                        }
+                }
+        }
+        return(matching);
 }
 
 
@@ -187,76 +179,49 @@ void relax(float **imatrix, float **rmatrix, int size, struct workRange wr)
  */
 int main(int argc, char **argv)
 {
-    int size, threads, precision, arrayLength;
-    int *array;
-    int i;
-    int arrayPassed = 0;
+        int size, numthr, prec, lenarr;
+        int *arr;
+        int i;
 
-    if (argc < 4) // too few arguments
-    {
-        fprintf(stderr, "Error: Too few arguments\n");
-        exit(1);
-    }
-    else if (argc > 4) // array is passed at CL
-    {
-        arrayPassed = 1;
-        size = atoi(argv[1]);
-        threads = atoi(argv[2]);
-        precision = atoi(argv[3]);
-        arrayLength = size * size;
-        if (argc - arrayLength != 4 || size < 3)
-        {
-            fprintf(stderr, "Error: Bad array length\n");
-            exit(1);
+        if (argc < 4) {
+                fprintf(stderr, "Error: Too few arguments\n");
+                exit(1);
+        } else {
+                size = atoi(argv[1]);
+                numthr = atoi(argv[2]);
+                prec = atoi(argv[3]);
+                lenarr = size * size;
+                arr = createarr(lenarr);
         }
-        array = malloc(arrayLength * sizeof(int));
-        for (i = 0; i < arrayLength; i++)
-        {
-            array[i] = atoi(argv[i + 4]);
+
+        printf("Size: %dx%d\n", size, size);
+        printf("numthr: %d\n", numthr);
+        printf("prec: %d\n", prec);
+
+        float **imat = createmat(size);
+        float **rmat = createmat(size);
+        initmat(imat, size, arr);
+        initmat(rmat, size, arr);
+
+        // Partition matrix so each thread works equally
+        struct range *ranges = partmat(size, numthr);
+        for (i = 0; i < numthr; i++) {
+                printf("Thread %d of %d will work on rows %d to %d\n",
+                        i + 1,
+                        numthr,
+                        ranges[i].start,
+                        ranges[i].end
+                      );
         }
-    }
-    else // array not passed, generate randomly
-    {
-        size = atoi(argv[1]);
-        threads = atoi(argv[2]);
-        precision = atoi(argv[3]);
-        arrayLength = size * size;
-        array = createArray(arrayLength);
-    }
 
+        printmat(imat, size);
+        relax(imat, rmat, size, ranges[0]);
+        printf("\n");
+        printmat(rmat, size);
 
-    // print information to stdout, for debug purposes
-    printf("Size: %dx%d\n", size, size);
-    printf("Threads: %d\n", threads);
-    printf("Precision: %d\n", precision);
-
-
-    // Create initial matrix, with values
-    float **imatrix = createMatrix(size);
-    initMatrix(imatrix, size, array);
-    // create result matrix with same values
-    float **rmatrix = createMatrix(size);
-    initMatrix(rmatrix, size, array);
-
-    // Partition matrix so each thread works equally
-    struct workRange *ranges = partitionMatrix(size, threads);
-    // print thread allocation info, debug purposes
-    for (i = 0; i < threads; i++)
-    {
-        printf("Thread %d of %d will work on rows %d to %d\n",
-                i + 1,
-                threads,
-                ranges[i].start,
-                ranges[i].end
-                );
-    }
-
-
-
-    // free the used memory
-    destroy(imatrix, size);
-    destroy(rmatrix, size);
-    free(array);
-    free(ranges);
-    return 0;
+        freemat(imat, size);
+        freemat(rmat, size);
+        free(arr);
+        free(ranges);
+        return 0;
 }

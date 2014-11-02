@@ -6,6 +6,11 @@
 #include <time.h>
 #include <unistd.h>
 
+/*
+ * TIL barriers are not implemented in OSX
+ */
+pthread_barrier_t barrier;
+
 struct range {
         int start;
         int end;
@@ -152,6 +157,7 @@ void relax(struct matrices *mats, struct range r)
                         mats->rmat[i][j] = avg;
                 }
         }
+        pthread_barrier_wait(&barrier);
 }
 
 int check(struct matrices *mats, double prec)
@@ -227,16 +233,20 @@ int main(int argc, char **argv)
                       );
         }
 
-        int iterations = 0;
         do {
-                /*printmat(mats->imat, size);*/
-                /*sleep(1);*/
-                relax(mats, ranges[0]);
-                /*printf("\n");*/
+                pthread_barrier_init(&barrier, NULL, numthr);
+                for (i = 0; i < numthr; i++)
+                {
+                        pthread_create(NULL,
+                                        NULL,
+                                        relax(mats, ranges[i]),
+                                        NULL);
+                }
+                pthread_barrier_wait(&barrier);
+                pthread_barrier_wait
                 swap(mats);
-                iterations++;
         } while (check(mats, prec));
-        printf("%d\n", iterations);
+        pthread_exit(NULL);
 
 
 

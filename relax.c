@@ -10,6 +10,12 @@ struct range {
         int end;
 };
 
+struct matrices {
+        float **imat;
+        float **rmat;
+        int size;
+};
+
 /*
  * Print a matrix of given size to stdout
  */
@@ -39,7 +45,6 @@ float** createmat(int size)
         return mat;
 }
 
-
 /*
  * Initialise a matrix with values
  */
@@ -55,7 +60,6 @@ void initmat(float **mat, int size, int *arr)
         }
 }
 
-
 /*
  * Create an arr of a given length
  */
@@ -70,7 +74,6 @@ int* createarr(int size)
         return arr;
 }
 
-
 /*
  * freemat a matrix of given size
  */
@@ -83,7 +86,6 @@ void freemat(float **mat, int size)
         free(mat);
 }
 
-
 /*
  * Find the inner size of a matrix
  * really simple, but saves on confusion
@@ -92,7 +94,6 @@ int inrsize(int size)
 {
         return size - 2;
 }
-
 
 /*
  * 'Partition' the matrix so each thread has roughly equal work
@@ -121,10 +122,13 @@ struct range* partmat(int size, int numthr)
         for (i = 0; i < numthr; i++) {
                 if (i == 0) {
                         ranges[i].start = 1;
-                        ranges[i].end = ranges[i].start + allocation[i];
+                        ranges[i].end = ranges[i].start
+                                + allocation[i];
                 } else {
-                        ranges[i].start = ranges[i - 1].start + allocation[i - 1];
-                        ranges[i].end = ranges[i].start + allocation[i];
+                        ranges[i].start = ranges[i - 1].start
+                                + allocation[i - 1];
+                        ranges[i].end = ranges[i].start
+                                + allocation[i];
                 }
         }
         free(allocation);
@@ -135,40 +139,40 @@ struct range* partmat(int size, int numthr)
 /*
  * Relax. Calculate the averages for rows in a given range
  */
-void relax(float **imat, float **rmat, int size, struct range r)
+void relax(struct matrices *mats, struct range r)
 {
         int i, j;
         float sum, avg;
 
         for (i = r.start; i < r.end; i++) {
-                for (j = 1; j < size - 1; j++) {
-                        sum = imat[i - 1][j]
-                                + imat[i][j + 1]
-                                + imat[i + 1][j]
-                                + imat[i][j - 1];
+                for (j = 1; j < mats->size - 1; j++) {
+                        sum = mats->imat[i - 1][j]
+                                + mats->imat[i][j + 1]
+                                + mats->imat[i + 1][j]
+                                + mats->imat[i][j - 1];
                         avg = sum / 4;
-                        rmat[i][j] = avg;
+                        mats->rmat[i][j] = avg;
                 }
         }
 }
 
-int check(float **imat, float **rmat, int size, float prec)
+int check(struct matrices *mats, float prec)
 {
         int i, j;
         float diff;
-        int matching = 0;
+        int matching = 1;
+        float tolerance = 1 / prec;
 
-        for (i = 0; i < size; i++) {
-                for (j = 0; j < size; j++) {
-                        diff = abs(imat[i][j] - rmat[i][j]);
-                        if (diff < (1 / prec)) {
-                                matching = 1;
-                        } else {
+        for (i = 0; i < mats->size; i++) {
+                for (j = 0; j < mats->size; j++) {
+                        diff = abs(mats->imat[i][j] - mats->rmat[i][j]);
+                        if (diff > tolerance) {
                                 matching = 0;
+                                break;
                         }
                 }
         }
-        return(matching);
+        return matching;
 }
 
 
@@ -198,10 +202,17 @@ int main(int argc, char **argv)
         printf("numthr: %d\n", numthr);
         printf("prec: %d\n", prec);
 
-        float **imat = createmat(size);
-        float **rmat = createmat(size);
-        initmat(imat, size, arr);
-        initmat(rmat, size, arr);
+        struct matrices *mats = malloc(sizeof(struct matrices));
+        mats->imat = createmat(size);
+        mats->rmat = createmat(size);
+        mats->size = size;
+        initmat(mats->imat, mats->size, arr);
+        initmat(mats->rmat, mats->size, arr);
+
+        /*float **imat = createmat(size);*/
+        /*float **rmat = createmat(size);*/
+        /*initmat(imat, size, arr);*/
+        /*initmat(rmat, size, arr);*/
 
         // Partition matrix so each thread works equally
         struct range *ranges = partmat(size, numthr);
@@ -214,13 +225,15 @@ int main(int argc, char **argv)
                       );
         }
 
-        printmat(imat, size);
-        relax(imat, rmat, size, ranges[0]);
+        printmat(mats->imat, size);
+        relax(mats, ranges[0]);
         printf("\n");
-        printmat(rmat, size);
+        printmat(mats->rmat, size);
+        printf("%d\n", check(mats, prec));
 
-        freemat(imat, size);
-        freemat(rmat, size);
+        freemat(mats->imat, mats->size);
+        freemat(mats->rmat, mats->size);
+        free(mats);
         free(arr);
         free(ranges);
         return 0;

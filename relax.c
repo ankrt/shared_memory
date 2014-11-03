@@ -17,6 +17,12 @@ struct matrices {
         int size;
 };
 
+// struct to wrap up a single range and pointers to the matrices
+struct work {
+        struct matrices *mats;
+        struct range *r;
+};
+
 void printmat(double **mat, int size)
 {
         int i, j;
@@ -137,19 +143,23 @@ struct range* partmat(int size, int numthr)
 /*
  * Relax. Calculate the averages for rows in a given range
  */
-void relax(struct matrices *mats, struct range r)
+/*void relax(struct matrices *mats, struct range r)*/
+void relax(void *ptr)
 {
+        struct work *w;
+        w = (struct work *) ptr;
+
         int i, j;
         double sum, avg;
 
-        for (i = r.start; i < r.end; i++) {
-                for (j = 1; j < mats->size - 1; j++) {
-                        sum = mats->imat[i - 1][j]
-                                + mats->imat[i][j + 1]
-                                + mats->imat[i + 1][j]
-                                + mats->imat[i][j - 1];
+        for (i = w->r->start; i < w->r->end; i++) {
+                for (j = 1; j < w->mats->size - 1; j++) {
+                        sum = w->mats->imat[i - 1][j]
+                                + w->mats->imat[i][j + 1]
+                                + w->mats->imat[i + 1][j]
+                                + w->mats->imat[i][j - 1];
                         avg = sum / 4;
-                        mats->rmat[i][j] = avg;
+                        w->mats->rmat[i][j] = avg;
                 }
         }
 }
@@ -227,20 +237,42 @@ int main(int argc, char **argv)
                       );
         }
 
+        // wrap up mats and a range
+        struct work *w = malloc(numthr * sizeof(struct work));
+        for (i = 0; i < numthr; i++) {
+                w[i].mats = mats;
+                w[i].r = &ranges[i];
+        }
+
+        // thread variables
+        pthread_t *thr = malloc(numthr * sizeof(pthread_t));
+        /*printmat(mats->imat, mats->size);*/
+        int numits = 0;
         do {
-                for (i = 0; i < numthr; i++)
-                {
-                        relax(mats, ranges[i]);
+                for (i = 0; i < numthr; i++) {
+                        pthread_create(
+                                        &thr[i],
+                                        NULL,
+                                        (void *) &relax,
+                                        (void *) &w[i]);
+                        /*relax(mats, ranges[i]);*/
                 }
-                sleep(1);
-                printmat(mats->imat, mats->size);
-                printf("\n");
+                for (i = 0; i < numthr; i++) {
+                        pthread_join(thr[i], NULL);
+                }
                 swap(mats);
+                numits++;
         } while (check(mats, prec));
+
+        printf("\n");
+        /*printmat(mats->imat, mats->size);*/
+        printf("\nComplete in %d iterations.\n", numits);
 
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);
         free(mats);
         free(ranges);
+        free(w);
+        free(thr);
         return 0;
 }

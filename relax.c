@@ -6,6 +6,28 @@
 #include <time.h>
 #include <unistd.h>
 
+int thrcycles = 0;
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cv_thrcycle = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cv_continue = PTHREAD_COND_INITIALIZER;
+
+// thread has completed one cycle, increment counter
+void incthrcycles() {
+        pthread_mutex_lock(&mtx);
+        thrcycles++;
+        pthread_cond_signal(&cv_thrcycle);
+        pthread_mutex_unlock(&mtx);
+}
+
+// wait until t threads have signalled
+void allthrcycled(int t) {
+        pthread_mutex_lock(&mtx);
+        while (thrcycles < t)
+                pthread_cond_wait(&cv_thrcycle, &mtx);
+        pthread_mutex_unlock(&mtx);
+}
+
+
 struct range {
         int start;
         int end;
@@ -23,12 +45,12 @@ struct work {
         struct range *r;
 };
 
-void printmat(double **mat, int size)
+void printmat(struct matrices *mat)
 {
         int i, j;
-        for (i = 0; i < size; i++) {
-                for (j = 0; j < size; j++) {
-                        printf("%f\t", mat[i][j]);
+        for (i = 0; i < mat->size; i++) {
+                for (j = 0; j < mat->size; j++) {
+                        printf("%f\t", mat->imat[i][j]);
                 }
                 printf("\n");
         }
@@ -144,7 +166,7 @@ struct range* partmat(int size, int numthr)
  * Relax. Calculate the averages for rows in a given range
  */
 /*void relax(struct matrices *mats, struct range r)*/
-void relax(void *ptr)
+void  * relax(void *ptr)
 {
         struct work *w;
         w = (struct work *) ptr;
@@ -162,6 +184,9 @@ void relax(void *ptr)
                         w->mats->rmat[i][j] = avg;
                 }
         }
+        incthrcycles();
+
+        return NULL;
 }
 
 int check(struct matrices *mats, double prec)
@@ -214,10 +239,6 @@ int main(int argc, char **argv)
                 arr = createarr(lenarr);
         }
 
-        printf("Size: %dx%d\n", size, size);
-        printf("numthr: %d\n", numthr);
-        printf("prec: %d\n", prec);
-
         struct matrices *mats = malloc(sizeof(struct matrices));
         mats->imat = createmat(size);
         mats->rmat = createmat(size);
@@ -228,14 +249,6 @@ int main(int argc, char **argv)
 
         // Partition matrix so each thread works equally
         struct range *ranges = partmat(size, numthr);
-        for (i = 0; i < numthr; i++) {
-                printf("Thread %d of %d will work on rows %d <= r < %d\n",
-                        i + 1,
-                        numthr,
-                        ranges[i].start,
-                        ranges[i].end
-                      );
-        }
 
         // wrap up mats and a range
         struct work *w = malloc(numthr * sizeof(struct work));
@@ -264,8 +277,6 @@ int main(int argc, char **argv)
                 numits++;
         } while (check(mats, prec));
 
-        printf("\n");
-        /*printmat(mats->imat, mats->size);*/
         printf("\nComplete in %d iterations.\n", numits);
 
         freemat(mats->imat, mats->size);

@@ -14,6 +14,7 @@ pthread_cond_t cv_continue = PTHREAD_COND_INITIALIZER;
 // thread has completed one cycle, increment counter
 void incthrcycles() {
         pthread_mutex_lock(&mtx);
+        printf("incthrcycles\n");
         thrcycles++;
         pthread_cond_signal(&cv_thrcycle);
         pthread_mutex_unlock(&mtx);
@@ -173,7 +174,8 @@ void  * relax(void *ptr)
 
         int i, j;
         double sum, avg;
-
+        sleep(2);
+        printf("lol i'm a thread\n");
         for (i = w->r->start; i < w->r->end; i++) {
                 for (j = 1; j < w->mats->size - 1; j++) {
                         sum = w->mats->imat[i - 1][j]
@@ -259,25 +261,22 @@ int main(int argc, char **argv)
 
         // thread variables
         pthread_t *thr = malloc(numthr * sizeof(pthread_t));
-        /*printmat(mats->imat, mats->size);*/
-        int numits = 0;
-        do {
-                for (i = 0; i < numthr; i++) {
-                        pthread_create(
-                                        &thr[i],
-                                        NULL,
-                                        (void *) &relax,
-                                        (void *) &w[i]);
-                        /*relax(mats, ranges[i]);*/
-                }
-                for (i = 0; i < numthr; i++) {
-                        pthread_join(thr[i], NULL);
-                }
-                swap(mats);
-                numits++;
-        } while (check(mats, prec));
+        // start all the threads
+        for (i = 0; i < numthr; i++) {
+                pthread_create(
+                                &thr[i],
+                                NULL,
+                                (void *) &relax,
+                                (void *) &w[i]);
+        }
+        // handle signalling
+        allthrcycled(numthr);
+        printf("All threads have completed an iteration\n");
 
-        printf("\nComplete in %d iterations.\n", numits);
+        for (i = 0; i < numthr; i++) {
+                pthread_exit(&thr[i]);
+        }
+
 
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);

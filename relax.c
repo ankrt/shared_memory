@@ -1,11 +1,10 @@
 /*#include <getopt.h>*/
 #include <math.h>
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
+#include "helper.h"
 
 /*
  * Synchronisation control
@@ -25,143 +24,6 @@ int working;
 pthread_mutex_t mtx_finish = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cnd_finish = PTHREAD_COND_INITIALIZER;
 int finish;
-
-/*
- * Structs
- */
-struct range {
-        int start;
-        int end;
-};
-
-struct matrices {
-        double **imat;
-        double **rmat;
-        int size;
-};
-
-// struct to wrap up a single range and pointers to the matrices
-struct work {
-        struct matrices *mats;
-        struct range *r;
-};
-
-void printmat(struct matrices *mat)
-{
-        int i, j;
-        for (i = 0; i < mat->size; i++) {
-                for (j = 0; j < mat->size; j++) {
-                        printf("%f\t", mat->imat[i][j]);
-                }
-                printf("\n");
-        }
-}
-
-/*
- * Create a matrix of given size
- */
-double** createmat(int size)
-{
-        int i;
-        double **mat;
-        mat = malloc(size * sizeof(double *));
-        for (i = 0; i < size; i++) {
-                mat[i] = malloc(size * sizeof(double));
-                /*if (mat[i] == NULL) { fprintf(stderr, "out of memory\n"); }*/
-        }
-        return mat;
-}
-
-/*
- * Initialise a matrix with values
- */
-void initmat(double **mat, int size, int *arr)
-{
-        int i, j;
-        int tmp = 0;
-        for (i = 0; i < size; i++) {
-                for (j = 0; j < size; j++) {
-                        mat[i][j] = arr[tmp];
-                        tmp++;
-                }
-        }
-}
-
-/*
- * Create an arr of a given length
- */
-int* createarr(int size)
-{
-        int i;
-        int *arr = malloc(size * sizeof(int));
-        srand(time(NULL));
-        for (i = 0; i < size; i++) {
-                arr[i] = rand() % 10;
-        }
-        return arr;
-}
-
-/*
- * freemat a matrix of given size
- */
-void freemat(double **mat, int size)
-{
-        int i;
-        for (i = 0; i < size; i++) {
-                free(mat[i]);
-        }
-        free(mat);
-}
-
-/*
- * Find the inner size of a matrix
- * really simple, but saves on confusion
- */
-int inrsize(int size)
-{
-        return size - 2;
-}
-
-/*
- * 'Partition' the matrix so each thread has roughly equal work
- */
-struct range* partmat(int size, int numthr)
-{
-        int isize = inrsize(size);
-        int unallocated = isize;
-        int currthr = 0;
-        int i;
-
-        int *allocation = malloc(isize * sizeof(int));
-        for (i = 0; i < isize; i++) {
-                allocation[i] = 0;
-        }
-
-        while (unallocated > 0) {
-                allocation[currthr]++;
-                unallocated--;
-                currthr++;
-                if (currthr == numthr) currthr = 0;
-        }
-
-        // work out start/end points
-        struct range *ranges = malloc(numthr * sizeof(struct range));
-        for (i = 0; i < numthr; i++) {
-                if (i == 0) {
-                        ranges[i].start = 1;
-                        ranges[i].end = ranges[i].start
-                                + allocation[i];
-                } else {
-                        ranges[i].start = ranges[i - 1].start
-                                + allocation[i - 1];
-                        ranges[i].end = ranges[i].start
-                                + allocation[i];
-                }
-        }
-        free(allocation);
-        return ranges;
-}
-
 
 /*
  * Relax. Calculate the averages for rows in a given range
@@ -254,7 +116,6 @@ int main(int argc, char **argv)
         int *arr;
         int i;
 
-        /**************************************************/
         // CL Argument handling
         if (argc < 4) {
                 fprintf(stderr, "Error: Too few arguments\n");
@@ -264,7 +125,11 @@ int main(int argc, char **argv)
                 numthr = atoi(argv[2]);
                 prec = atoi(argv[3]);
                 lenarr = size * size;
-                arr = createarr(lenarr);
+        }
+        if (argc == 4) {
+                arr = createrandom(lenarr);
+        } else {
+                arr = createarr(argc, argv, lenarr);
         }
 
         /**************************************************/
@@ -293,8 +158,8 @@ int main(int argc, char **argv)
 
         /**************************************************/
 
-        printmat(mats);
-        printf("\n");
+        /*printmat(mats);*/
+        /*printf("\n");*/
         // handle signalling
         int numits = 0;
         do {
@@ -338,8 +203,8 @@ int main(int argc, char **argv)
                 numits++;
         } while (check(mats, prec));
 
-        printmat(mats);
-        printf("\n");
+        /*printmat(mats);*/
+        /*printf("\n");*/
 
         printf("Complete in %d iterations.\n", numits);
 

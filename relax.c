@@ -1,34 +1,34 @@
 /*#include <getopt.h>*/
 #include <math.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
-int thrcycles = 0;
-pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cv_thrcycle = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cv_continue = PTHREAD_COND_INITIALIZER;
+/*
+ * Synchronisation control
+ */
+pthread_mutex_t mtx_idle = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cnd_idle = PTHREAD_COND_INITIALIZER;
+int idle;
 
-// thread has completed one cycle, increment counter
-void incthrcycles() {
-        pthread_mutex_lock(&mtx);
-        printf("incthrcycles\n");
-        thrcycles++;
-        pthread_cond_signal(&cv_thrcycle);
-        pthread_mutex_unlock(&mtx);
-}
+pthread_mutex_t mtx_ready = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cnd_ready = PTHREAD_COND_INITIALIZER;
+int ready;
 
-// wait until t threads have signalled
-void allthrcycled(int t) {
-        pthread_mutex_lock(&mtx);
-        while (thrcycles < t)
-                pthread_cond_wait(&cv_thrcycle, &mtx);
-        pthread_mutex_unlock(&mtx);
-}
+pthread_mutex_t mtx_working = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cnd_working = PTHREAD_COND_INITIALIZER;
+int working;
 
+pthread_mutex_t mtx_finish = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cnd_finish = PTHREAD_COND_INITIALIZER;
+int finish;
 
+/*
+ * Structs
+ */
 struct range {
         int start;
         int end;
@@ -44,6 +44,7 @@ struct matrices {
 struct work {
         struct matrices *mats;
         struct range *r;
+        int numthr;
 };
 
 void printmat(struct matrices *mat)
@@ -169,26 +170,50 @@ struct range* partmat(int size, int numthr)
 /*void relax(struct matrices *mats, struct range r)*/
 void  * relax(void *ptr)
 {
-        struct work *w;
-        w = (struct work *) ptr;
-
+        struct work *w = (struct work *) ptr;
         int i, j;
         double sum, avg;
-        sleep(2);
-        printf("lol i'm a thread\n");
-        for (i = w->r->start; i < w->r->end; i++) {
-                for (j = 1; j < w->mats->size - 1; j++) {
-                        sum = w->mats->imat[i - 1][j]
-                                + w->mats->imat[i][j + 1]
-                                + w->mats->imat[i + 1][j]
-                                + w->mats->imat[i][j - 1];
-                        avg = sum / 4;
-                        w->mats->rmat[i][j] = avg;
-                }
-        }
-        incthrcycles();
 
-        return NULL;
+        while (1) {
+
+                // set self to idle
+                pthread_mutex_lock(&mtx_idle);
+                idle++;
+                pthread_cond_signal(&cnd_idle);
+                pthread_mutex_unlock(&mtx_idle);
+
+                // wait until told to start
+                pthread_mutex_lock(&mtx_ready);
+                while (!ready)
+                        pthread_cond_wait(&cnd_ready, &mtx_ready);
+                pthread_mutex_unlock(&mtx_ready);
+
+                /*sleep(1);*/
+                // do work
+                for (i = w->r->start; i < w->r->end; i++) {
+                        for (j = 1; j < w->mats->size - 1; j++) {
+                                sum = w->mats->imat[i - 1][j]
+                                        + w->mats->imat[i][j + 1]
+                                        + w->mats->imat[i + 1][j]
+                                        + w->mats->imat[i][j - 1];
+                                avg = sum / 4;
+                                w->mats->rmat[i][j] = avg;
+                        }
+                }
+
+                // set self to finished
+                pthread_mutex_lock(&mtx_working);
+                working--;
+                pthread_cond_signal(&cnd_working);
+                pthread_mutex_unlock(&mtx_working);
+
+                // wait to finish
+                pthread_mutex_lock(&mtx_finish);
+                while (!finish)
+                        pthread_cond_wait(&cnd_finish, &mtx_finish);
+                pthread_mutex_unlock(&mtx_finish);
+        }
+        pthread_exit(NULL);
 }
 
 int check(struct matrices *mats, double prec)
@@ -230,6 +255,8 @@ int main(int argc, char **argv)
         int *arr;
         int i;
 
+        /**************************************************/
+        // CL Argument handling
         if (argc < 4) {
                 fprintf(stderr, "Error: Too few arguments\n");
                 exit(1);
@@ -241,6 +268,8 @@ int main(int argc, char **argv)
                 arr = createarr(lenarr);
         }
 
+        /**************************************************/
+        // Initialise structs with values
         struct matrices *mats = malloc(sizeof(struct matrices));
         mats->imat = createmat(size);
         mats->rmat = createmat(size);
@@ -254,30 +283,71 @@ int main(int argc, char **argv)
 
         // wrap up mats and a range
         struct work *w = malloc(numthr * sizeof(struct work));
+        pthread_t *thr = malloc(numthr * sizeof(pthread_t));
+        /**************************************************/
+        // Work item for each thread & start thread
         for (i = 0; i < numthr; i++) {
                 w[i].mats = mats;
                 w[i].r = &ranges[i];
+                w[i].numthr = numthr;
+                pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
-        // thread variables
-        pthread_t *thr = malloc(numthr * sizeof(pthread_t));
-        // start all the threads
-        for (i = 0; i < numthr; i++) {
-                pthread_create(
-                                &thr[i],
-                                NULL,
-                                (void *) &relax,
-                                (void *) &w[i]);
-        }
+        /**************************************************/
+
+        /*printmat(mats);*/
+        /*printf("\n");*/
         // handle signalling
-        allthrcycled(numthr);
-        printf("All threads have completed an iteration\n");
+        int numits = 0;
+        do {
+                // wait for all threads to become ready
+                pthread_mutex_lock(&mtx_idle);
+                while (idle != numthr)
+                        pthread_cond_wait(&cnd_idle, &mtx_idle);
+                pthread_mutex_unlock(&mtx_idle);
 
-        for (i = 0; i < numthr; i++) {
-                pthread_exit(&thr[i]);
-        }
+                // stop threads from finishing prematurely
+                finish = 0;
+                // all threads will now be working
+                working = numthr;
+
+                // signal threads to start
+                pthread_mutex_lock(&mtx_ready);
+                ready = 1;
+                pthread_cond_broadcast(&cnd_ready);
+                pthread_mutex_unlock(&mtx_ready);
+
+                // wait for threads to finish
+                pthread_mutex_lock(&mtx_working);
+                while (working != 0)
+                        pthread_cond_wait(&cnd_working, &mtx_working);
+                pthread_mutex_unlock(&mtx_working);
+
+                // swap matrices
+                swap(mats);
+
+                // threads waiting before they can finish
+                // prevent them from starting again
+                ready = 0;
+                idle = 0;
+
+                // allow them to finish
+                pthread_mutex_lock(&mtx_finish);
+                finish = 1;
+                pthread_cond_broadcast(&cnd_finish);
+                pthread_mutex_unlock(&mtx_finish);
+
+                numits++;
+        } while (check(mats, prec));
+
+        /*printmat(mats);*/
+        /*printf("\n");*/
+
+        printf("Complete in %d iterations.\n", numits);
 
 
+        /**************************************************/
+        // free memory
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);
         free(mats);

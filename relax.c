@@ -44,7 +44,6 @@ struct matrices {
 struct work {
         struct matrices *mats;
         struct range *r;
-        int numthr;
 };
 
 void printmat(struct matrices *mat)
@@ -97,7 +96,7 @@ int* createarr(int size)
         int *arr = malloc(size * sizeof(int));
         srand(time(NULL));
         for (i = 0; i < size; i++) {
-                arr[i] = rand() % 5;
+                arr[i] = rand() % 10;
         }
         return arr;
 }
@@ -289,14 +288,13 @@ int main(int argc, char **argv)
         for (i = 0; i < numthr; i++) {
                 w[i].mats = mats;
                 w[i].r = &ranges[i];
-                w[i].numthr = numthr;
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
         /**************************************************/
 
-        /*printmat(mats);*/
-        /*printf("\n");*/
+        printmat(mats);
+        printf("\n");
         // handle signalling
         int numits = 0;
         do {
@@ -340,8 +338,8 @@ int main(int argc, char **argv)
                 numits++;
         } while (check(mats, prec));
 
-        /*printmat(mats);*/
-        /*printf("\n");*/
+        printmat(mats);
+        printf("\n");
 
         printf("Complete in %d iterations.\n", numits);
 

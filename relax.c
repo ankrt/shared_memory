@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include "helper.h"
 
@@ -130,6 +131,11 @@ void swap(struct matrices *mats)
  */
 int main(int argc, char **argv)
 {
+        // start timing the process
+        clock_t start, end;
+        double cpu_time_used;
+        start = clock();
+
         int size, numthr, prec, lenarr;
         int *arr;
         int i;
@@ -177,6 +183,8 @@ int main(int argc, char **argv)
         }
 
         // main loop
+        /*printmat(mats);*/
+        /*printf("\n");*/
         int numits = 0;
         do {
                 // wait for all threads to become ready
@@ -218,8 +226,11 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
+        /*printmat(mats);*/
+        /*printf("\n");*/
 
-        printf("Complete in %d iterations\n", numits);
+
+        printf("%d\n", numits);
 
         // free memory
         freemat(mats->imat, mats->size);
@@ -228,5 +239,10 @@ int main(int argc, char **argv)
         free(ranges);
         free(w);
         free(thr);
+
+        // stop timing the process
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        printf("%f\n", cpu_time_used);
         return 0;
 }

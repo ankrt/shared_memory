@@ -23,6 +23,7 @@ struct matrices {
 struct work {
         struct matrices *mats;
         struct range *r;
+        double tolerance;
 };
 
 /*

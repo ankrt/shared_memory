@@ -25,6 +25,12 @@ pthread_mutex_t mtx_finish = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cnd_finish = PTHREAD_COND_INITIALIZER;
 int finish;
 
+// threads increment this value if values in their rows
+// are not yet within the required precision
+// when this value remains 0, relaxation is complete
+pthread_mutex_t mtx_not_complete = PTHREAD_MUTEX_INITIALIZER;
+int not_complete;
+
 /*
  * Relax. Calculate the averages for rows in a given range
  */
@@ -33,7 +39,8 @@ void  * relax(void *ptr)
 {
         struct work *w = (struct work *) ptr;
         int i, j;
-        double sum, avg;
+        double sum, avg, diff;
+        int flag = 1;
 
         while (1) {
 
@@ -49,7 +56,6 @@ void  * relax(void *ptr)
                         pthread_cond_wait(&cnd_ready, &mtx_ready);
                 pthread_mutex_unlock(&mtx_ready);
 
-                /*sleep(1);*/
                 // do work
                 for (i = w->r->start; i < w->r->end; i++) {
                         for (j = 1; j < w->mats->size - 1; j++) {
@@ -59,8 +65,24 @@ void  * relax(void *ptr)
                                         + w->mats->imat[i][j - 1];
                                 avg = sum / 4;
                                 w->mats->rmat[i][j] = avg;
+                                // calculate difference
+                                diff = fabs(w->mats->imat[i][j] -
+                                                w->mats->rmat[i][j]);
+                                // is difference within tolerance?
+                                if (diff > w->tolerance)
+                                        flag = 0;
                         }
                 }
+
+                // if there are values not within the precision
+                // increment the count
+                if (flag == 0) {
+                        pthread_mutex_lock(&mtx_not_complete);
+                        not_complete++;
+                        pthread_mutex_unlock(&mtx_not_complete);
+                }
+                // reset flag
+                flag = 1;
 
                 // set self to finished
                 pthread_mutex_lock(&mtx_working);
@@ -77,23 +99,21 @@ void  * relax(void *ptr)
         pthread_exit(NULL);
 }
 
-int check(struct matrices *mats, double prec)
+int check()
 {
-        int i, j;
-        double diff;
-        int matching = 0;
-        double tolerance = 1 / prec;
-
-        for (i = 0; i < mats->size; i++) {
-                for (j = 0; j < mats->size; j++) {
-                        diff = fabs(mats->imat[i][j] - mats->rmat[i][j]);
-                        if (diff > tolerance) {
-                                matching = 1;
-                                return matching;
-                        }
-                }
+        int retval;
+        // not_complete > 0, must continue: return true
+        // not_complete = 0, can stop: return false
+        pthread_mutex_lock(&mtx_not_complete);
+        if (not_complete > 0) {
+                retval = 1;
+        } else {
+                retval = 0;
         }
-        return matching;
+        // reset not_complete
+        not_complete = 0;
+        pthread_mutex_unlock(&mtx_not_complete);
+        return retval;
 }
 
 void swap(struct matrices *mats)
@@ -114,7 +134,7 @@ int main(int argc, char **argv)
         int *arr;
         int i;
 
-        printf("%d\n", argc);
+        /*printf("%d\n", argc);*/
         // CL Argument handling
         if (argc < 4) {
                 fprintf(stderr, "Error: Too few arguments\n");
@@ -143,14 +163,16 @@ int main(int argc, char **argv)
         // Partition matrix so each thread works equally
         struct range *ranges = partmat(size, numthr);
 
-        // wrap up mats and a range
+        // wrap up mats, range and precision into single struct
         struct work *w = malloc(numthr * sizeof(struct work));
+        // reserve memory for each thread
         pthread_t *thr = malloc(numthr * sizeof(pthread_t));
 
         // Work item for each thread & start thread
         for (i = 0; i < numthr; i++) {
                 w[i].mats = mats;
                 w[i].r = &ranges[i];
+                w[i].tolerance = (double) 1 / prec;
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
@@ -195,7 +217,7 @@ int main(int argc, char **argv)
                 pthread_mutex_unlock(&mtx_finish);
 
                 numits++;
-        } while (check(mats, prec));
+        } while (check());
 
         printf("Complete in %d iterations\n", numits);
 

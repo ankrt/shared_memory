@@ -107,8 +107,6 @@ void swap(struct matrices *mats)
 
 /*
  * Main
- * TODO:
- *  - Remove automatic generation of maitrces for final submission
  */
 int main(int argc, char **argv)
 {
@@ -116,6 +114,7 @@ int main(int argc, char **argv)
         int *arr;
         int i;
 
+        printf("%d\n", argc);
         // CL Argument handling
         if (argc < 4) {
                 fprintf(stderr, "Error: Too few arguments\n");
@@ -132,7 +131,6 @@ int main(int argc, char **argv)
                 arr = createarr(argc, argv, lenarr);
         }
 
-        /**************************************************/
         // Initialise structs with values
         struct matrices *mats = malloc(sizeof(struct matrices));
         mats->imat = createmat(size);
@@ -148,7 +146,7 @@ int main(int argc, char **argv)
         // wrap up mats and a range
         struct work *w = malloc(numthr * sizeof(struct work));
         pthread_t *thr = malloc(numthr * sizeof(pthread_t));
-        /**************************************************/
+
         // Work item for each thread & start thread
         for (i = 0; i < numthr; i++) {
                 w[i].mats = mats;
@@ -156,11 +154,7 @@ int main(int argc, char **argv)
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
-        /**************************************************/
-
-        /*printmat(mats);*/
-        /*printf("\n");*/
-        // handle signalling
+        // main loop
         int numits = 0;
         do {
                 // wait for all threads to become ready
@@ -203,13 +197,8 @@ int main(int argc, char **argv)
                 numits++;
         } while (check(mats, prec));
 
-        /*printmat(mats);*/
-        /*printf("\n");*/
+        printf("Complete in %d iterations\n", numits);
 
-        printf("Complete in %d iterations.\n", numits);
-
-
-        /**************************************************/
         // free memory
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);

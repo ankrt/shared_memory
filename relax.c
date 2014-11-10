@@ -1,4 +1,3 @@
-/*#include <getopt.h>*/
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -125,7 +124,6 @@ void swap(struct matrices *mats)
         mats->rmat = tmp;
 }
 
-
 /*
  * Main
  */
@@ -226,13 +224,25 @@ int main(int argc, char **argv)
 
 
 
-        // free memory
+        // deallocate memory
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);
         free(mats);
         free(ranges);
         free(w);
         free(thr);
+
+        // destroy mutexexes & condvars
+        pthread_mutex_destroy(&mtx_idle);
+        pthread_mutex_destroy(&mtx_ready);
+        pthread_mutex_destroy(&mtx_working);
+        pthread_mutex_destroy(&mtx_finish);
+        pthread_mutex_destroy(&mtx_not_complete);
+
+        pthread_cond_destroy(&cnd_idle);
+        pthread_cond_destroy(&cnd_ready);
+        pthread_cond_destroy(&cnd_working);
+        pthread_cond_destroy(&cnd_finish);
 
         printf("%d\n", numits);
         return 0;

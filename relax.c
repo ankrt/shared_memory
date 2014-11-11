@@ -74,6 +74,13 @@ void  * relax(void *ptr)
                         }
                 }
 
+                // REFACTOR:
+                // Have 2 loops doing work, first with a check
+                // once a value is found that is not within the
+                // precision, break out of the loop and continue
+                // in the second, which will not have a check.
+                // probable minor speed boost.
+
                 // if there are values not within the precision
                 // increment the count
                 if (flag == 0) {
@@ -219,10 +226,6 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
-        /*printmat(mats);*/
-        /*printf("\n");*/
-
-
 
         // deallocate memory
         freemat(mats->imat, mats->size);

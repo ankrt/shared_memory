@@ -8,6 +8,8 @@
 
 /*
  * Synchronisation control
+ * Bonus: do you want to hear a joke?
+ * OSX's posix implementation doesn't include barriers!
  */
 pthread_mutex_t mtx_idle = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cnd_idle = PTHREAD_COND_INITIALIZER;
@@ -79,7 +81,7 @@ void  * relax(void *ptr)
                 // once a value is found that is not within the
                 // precision, break out of the loop and continue
                 // in the second, which will not have a check.
-                // probable minor speed boost.
+                // minor speed boost.
 
                 // if there are values not within the precision
                 // increment the count

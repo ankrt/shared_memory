@@ -3,6 +3,13 @@
 #include <time.h>
 #include <unistd.h>
 
+//// Encapsulate properties inside a struct
+//struct progvars {
+        //int size;
+        //int numthr;
+        //int precision;
+        //int lenarr;
+
 // Encapsulate working range inside a struct
 struct range {
         int start;
@@ -27,15 +34,31 @@ struct work {
 };
 
 /*
+ * Decide what to do with the arguments that
+ * are passed to the program
+ */
+//struct *progvars handleargs(int argc, char **argv) {
+        //struct progvars *pv = malloc(sizeof(struct progvars));
+        //if (argc < 4) {
+                //fprintf(stderr, "Error: Too few arguments\n");
+                //exit(1);
+        //} else {
+
+//}
+
+
+
+/*
  * Create an array and fill with random values
  */
 int* createrandom(int length)
 {
         int i;
         int *arr = malloc(length * sizeof(int));
-        srand(time(NULL));
+        //srand(time(NULL));
         for (i = 0; i < length; i++) {
-                arr[i] = rand() % 10;
+                //arr[i] = rand() % 10;
+                arr[i] = rand();
         }
         return arr;
 }

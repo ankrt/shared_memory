@@ -56,7 +56,7 @@ void  * relax(void *ptr)
                         pthread_cond_wait(&cnd_ready, &mtx_ready);
                 pthread_mutex_unlock(&mtx_ready);
 
-                // do work
+                // Work loop one, with checks
                 for (i = w->r->start; i < w->r->end; i++) {
                         for (j = 1; j < w->mats->size - 1; j++) {
                                 sum = w->mats->imat[i - 1][j]
@@ -73,13 +73,6 @@ void  * relax(void *ptr)
                                         flag = 0;
                         }
                 }
-
-                // REFACTOR:
-                // Have 2 loops doing work, first with a check
-                // once a value is found that is not within the
-                // precision, break out of the loop and continue
-                // in the second, which will not have a check.
-                // probable minor speed boost.
 
                 // if there are values not within the precision
                 // increment the count
@@ -109,8 +102,6 @@ void  * relax(void *ptr)
 int check()
 {
         int retval;
-        // not_complete > 0, must continue: return true
-        // not_complete = 0, can stop: return false
         pthread_mutex_lock(&mtx_not_complete);
         if (not_complete > 0) {
                 retval = 1;
@@ -140,7 +131,6 @@ int main(int argc, char **argv)
         int *arr;
         int i;
 
-        /*printf("%d\n", argc);*/
         // CL Argument handling
         if (argc < 4) {
                 fprintf(stderr, "Error: Too few arguments\n");
@@ -213,6 +203,10 @@ int main(int argc, char **argv)
                 // swap matrices
                 swap(mats);
 
+                /*sleep(1);*/
+                /*printmat(mats);*/
+                /*printf("\n");*/
+
                 // threads waiting before they can finish
                 // prevent them from starting again
                 ready = 0;
@@ -226,6 +220,9 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
+
+        /*printmat(mats);*/
+        /*printf("\n");*/
 
         // deallocate memory
         freemat(mats->imat, mats->size);

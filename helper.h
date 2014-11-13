@@ -33,7 +33,7 @@ int* createrandom(int length)
 {
         int i;
         int *arr = malloc(length * sizeof(int));
-        srand(time(NULL));
+        //srand(time(NULL));
         for (i = 0; i < length; i++) {
                 arr[i] = rand() % 10;
         }

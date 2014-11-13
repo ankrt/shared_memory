@@ -3,13 +3,6 @@
 #include <time.h>
 #include <unistd.h>
 
-//// Encapsulate properties inside a struct
-//struct progvars {
-        //int size;
-        //int numthr;
-        //int precision;
-        //int lenarr;
-
 // Encapsulate working range inside a struct
 struct range {
         int start;
@@ -34,21 +27,6 @@ struct work {
 };
 
 /*
- * Decide what to do with the arguments that
- * are passed to the program
- */
-//struct *progvars handleargs(int argc, char **argv) {
-        //struct progvars *pv = malloc(sizeof(struct progvars));
-        //if (argc < 4) {
-                //fprintf(stderr, "Error: Too few arguments\n");
-                //exit(1);
-        //} else {
-
-//}
-
-
-
-/*
  * Create an array and fill with random values
  */
 int* createrandom(int length)
@@ -58,7 +36,7 @@ int* createrandom(int length)
         //srand(time(NULL));
         for (i = 0; i < length; i++) {
                 //arr[i] = rand() % 10;
-                arr[i] = rand();
+                arr[i] = rand() % 10;
         }
         return arr;
 }
@@ -94,7 +72,7 @@ double** createmat(int size)
 /*
  * Initialise an empty matrix with values
  */
-void initmat(double **mat, int size, int *arr)
+void fillmat(double **mat, int size, int *arr)
 {
         int i, j;
         int tmp = 0;
@@ -118,6 +96,19 @@ void printmat(struct matrices *mat)
                 }
                 printf("\n");
         }
+}
+
+/*
+ * Initialise structs with values
+ */
+void initmats(struct matrices *mats, int *arr,  int size)
+{
+        mats->imat = createmat(size);
+        mats->rmat = createmat(size);
+        mats->size = size;
+        fillmat(mats->imat, mats->size, arr);
+        fillmat(mats->rmat, mats->size, arr);
+        free(arr);
 }
 
 /*

@@ -32,6 +32,23 @@ pthread_mutex_t mtx_not_complete = PTHREAD_MUTEX_INITIALIZER;
 int not_complete;
 
 /*
+ * Destroy the mutexes and condition variables once
+ * they are nolonger needed
+ */
+void destroy()
+{
+        pthread_mutex_destroy(&mtx_idle);
+        pthread_mutex_destroy(&mtx_ready);
+        pthread_mutex_destroy(&mtx_working);
+        pthread_mutex_destroy(&mtx_finish);
+        pthread_mutex_destroy(&mtx_not_complete);
+        pthread_cond_destroy(&cnd_idle);
+        pthread_cond_destroy(&cnd_ready);
+        pthread_cond_destroy(&cnd_working);
+        pthread_cond_destroy(&cnd_finish);
+}
+
+/*
  * Relax. Calculate the averages for rows in a given range
  */
 /*void relax(struct matrices *mats, struct range r)*/
@@ -56,27 +73,44 @@ void  * relax(void *ptr)
                         pthread_cond_wait(&cnd_ready, &mtx_ready);
                 pthread_mutex_unlock(&mtx_ready);
 
-                // Work loop one, with checks
+                // first loop, with precision checks
                 for (i = w->r->start; i < w->r->end; i++) {
                         for (j = 1; j < w->mats->size - 1; j++) {
+                                // calculate the average of surrounding vals
+                                sum = w->mats->imat[i - 1][j]
+                                        + w->mats->imat[i][j + 1]
+                                        + w->mats->imat[i + 1][j]
+                                        + w->mats->imat[i][j - 1];
+                                avg = sum / 4;
+                                // store the result
+                                w->mats->rmat[i][j] = avg;
+                                diff = fabs(w->mats->imat[i][j] -
+                                                w->mats->rmat[i][j]);
+                                // is difference within tolerance?
+                                if (diff > w->tolerance) {
+                                        flag = 0;
+                                        break;
+                                }
+                        }
+                        if (!flag)
+                                break;
+                }
+                // second loop, without precision checks
+                for (; i < w->r->end; i++) {
+                        for (; j < w->mats->size - 1; j++) {
                                 sum = w->mats->imat[i - 1][j]
                                         + w->mats->imat[i][j + 1]
                                         + w->mats->imat[i + 1][j]
                                         + w->mats->imat[i][j - 1];
                                 avg = sum / 4;
                                 w->mats->rmat[i][j] = avg;
-                                // calculate difference
-                                diff = fabs(w->mats->imat[i][j] -
-                                                w->mats->rmat[i][j]);
-                                // is difference within tolerance?
-                                if (diff > w->tolerance)
-                                        flag = 0;
                         }
+                        j = 1;
                 }
 
                 // if there are values not within the precision
                 // increment the count
-                if (flag == 0) {
+                if (!flag) {
                         pthread_mutex_lock(&mtx_not_complete);
                         not_complete++;
                         pthread_mutex_unlock(&mtx_not_complete);
@@ -101,17 +135,16 @@ void  * relax(void *ptr)
 
 int check()
 {
-        int retval;
+        int r;
         pthread_mutex_lock(&mtx_not_complete);
         if (not_complete > 0) {
-                retval = 1;
+                r = 1;
         } else {
-                retval = 0;
+                r = 0;
         }
-        // reset not_complete
         not_complete = 0;
         pthread_mutex_unlock(&mtx_not_complete);
-        return retval;
+        return r;
 }
 
 void swap(struct matrices *mats)
@@ -122,9 +155,6 @@ void swap(struct matrices *mats)
         mats->rmat = tmp;
 }
 
-/*
- * Main
- */
 int main(int argc, char **argv)
 {
         int size, numthr, prec, lenarr;
@@ -149,12 +179,7 @@ int main(int argc, char **argv)
 
         // Initialise structs with values
         struct matrices *mats = malloc(sizeof(struct matrices));
-        mats->imat = createmat(size);
-        mats->rmat = createmat(size);
-        mats->size = size;
-        initmat(mats->imat, mats->size, arr);
-        initmat(mats->rmat, mats->size, arr);
-        free(arr);
+        initmats(mats, arr, size);
 
         // Partition matrix so each thread works equally
         struct range *ranges = partmat(size, numthr);
@@ -164,7 +189,7 @@ int main(int argc, char **argv)
         // reserve memory for each thread
         pthread_t *thr = malloc(numthr * sizeof(pthread_t));
 
-        // Work item for each thread & start thread
+        // create work for each thread & start thread
         for (i = 0; i < numthr; i++) {
                 w[i].mats = mats;
                 w[i].r = &ranges[i];
@@ -173,8 +198,6 @@ int main(int argc, char **argv)
         }
 
         // main loop
-        /*printmat(mats);*/
-        /*printf("\n");*/
         int numits = 0;
         do {
                 // wait for all threads to become ready
@@ -203,16 +226,11 @@ int main(int argc, char **argv)
                 // swap matrices
                 swap(mats);
 
-                /*sleep(1);*/
-                /*printmat(mats);*/
-                /*printf("\n");*/
-
-                // threads waiting before they can finish
-                // prevent them from starting again
+                // prevent threads from restarting
                 ready = 0;
                 idle = 0;
 
-                // allow them to finish
+                // signal threads to finish
                 pthread_mutex_lock(&mtx_finish);
                 finish = 1;
                 pthread_cond_broadcast(&cnd_finish);
@@ -221,9 +239,6 @@ int main(int argc, char **argv)
                 numits++;
         } while (check());
 
-        /*printmat(mats);*/
-        /*printf("\n");*/
-
         // deallocate memory
         freemat(mats->imat, mats->size);
         freemat(mats->rmat, mats->size);
@@ -231,18 +246,6 @@ int main(int argc, char **argv)
         free(ranges);
         free(w);
         free(thr);
-
-        // destroy mutexexes & condvars
-        pthread_mutex_destroy(&mtx_idle);
-        pthread_mutex_destroy(&mtx_ready);
-        pthread_mutex_destroy(&mtx_working);
-        pthread_mutex_destroy(&mtx_finish);
-        pthread_mutex_destroy(&mtx_not_complete);
-
-        pthread_cond_destroy(&cnd_idle);
-        pthread_cond_destroy(&cnd_ready);
-        pthread_cond_destroy(&cnd_working);
-        pthread_cond_destroy(&cnd_finish);
 
         printf("%d\n", numits);
         return 0;

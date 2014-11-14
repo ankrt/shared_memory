@@ -35,6 +35,7 @@ int* createrandom(int length)
         int *arr = malloc(length * sizeof(int));
         //srand(time(NULL));
         for (i = 0; i < length; i++) {
+                //arr[i] = rand() % 10;
                 arr[i] = rand() % 10;
         }
         return arr;
@@ -71,7 +72,7 @@ double** createmat(int size)
 /*
  * Initialise an empty matrix with values
  */
-void initmat(double **mat, int size, int *arr)
+void fillmat(double **mat, int size, int *arr)
 {
         int i, j;
         int tmp = 0;
@@ -95,6 +96,19 @@ void printmat(struct matrices *mat)
                 }
                 printf("\n");
         }
+}
+
+/*
+ * Initialise structs with values
+ */
+void initmats(struct matrices *mats, int *arr,  int size)
+{
+        mats->imat = createmat(size);
+        mats->rmat = createmat(size);
+        mats->size = size;
+        fillmat(mats->imat, mats->size, arr);
+        fillmat(mats->rmat, mats->size, arr);
+        free(arr);
 }
 
 /*

@@ -4,10 +4,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include "helper.h"
+#include "relax.h"
 
 /*
  * Synchronisation control
+ *
+ * Do you want to hear a joke?
+ * Apple's implementation of PThreads doesn't include Barriers!
  */
 pthread_mutex_t mtx_idle = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cnd_idle = PTHREAD_COND_INITIALIZER;
@@ -51,7 +54,6 @@ void destroy()
 /*
  * Relax. Calculate the averages for rows in a given range
  */
-/*void relax(struct matrices *mats, struct range r)*/
 void  * relax(void *ptr)
 {
         struct work *w = (struct work *) ptr;

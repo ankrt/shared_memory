@@ -10,9 +10,9 @@ ARRAY_MAX_SIZE = 151
 ARRAY_INCREMENT = 10
 
 MIN_PRECISION = 10
-MAX_PRECISION = 1000000
+MAX_PRECISION = 1000
 
-MIN_THREADS = 1
+MIN_THREADS = 8
 MAX_THREADS = 9
 
 NUM_TESTS = 1
@@ -25,13 +25,14 @@ def genNums(size):
         numlist += str(random.randint(0, 10))
     return numlist
 
-def printInfo(count, size, threads, precision, output):
+def printInfo(count, size, threads, precision, output, et):
     outputList = output.split()
     print count, ',',
     print size, ',',
     print threads, ',',
     print precision, ',',
-    print outputList[0]
+    print outputList[0], ',',
+    print et
 
 #def printOutput(output):
     #for line in output.stdout:
@@ -54,7 +55,7 @@ while precision <= MAX_PRECISION:
     precision = precision * 10
 
 # Headers
-print 'n,size,threads,precision,iterations'
+print 'n,size,threads,precision,iterations,walltime'
 # Run the program
 runCount = 0
 for i in range(NUM_TESTS):
@@ -62,16 +63,15 @@ for i in range(NUM_TESTS):
         for t in tThreads:
             for p in tPrecisions:
                 command =  ' '.join(list(itertools.chain([
-                        '(time',
                         './relax.out',
                         tSizes[a],
                         t,
                         p],
                         tArrays[a],
-                        ')')))
+                        )))
+                ts = time.time();
                 output = os.popen(command).read()
-                #print output
-                printInfo(runCount, tSizes[a], t, p, output)
-                #for line in output.stdout:
-                    #print line
+                te = time.time();
+                et = te - ts
+                printInfo(runCount, tSizes[a], t, p, output, et)
                 runCount += 1

@@ -137,7 +137,7 @@ int inrsize(int size)
  * this will allow each thread to work on an approximately
  * even amount of data
  */
-struct range* partmat2(int size, int numthr)
+struct range* partmat(int size, int numthr)
 {
         // split into equal chunks + a remainder
         // each thread gets a chunk, assign one of
@@ -147,12 +147,6 @@ struct range* partmat2(int size, int numthr)
         int chunksize = isize / numthr;
         int remainder = isize % numthr;
         int i;
-
-        printf("Size: %d, T: %d, cs: %d, r: %d\n",
-                        isize,
-                        numthr,
-                        chunksize,
-                        remainder);
 
         // give each thread one of the equal sized chunks
         int *allocation = malloc(numthr * sizeof(int));
@@ -165,42 +159,6 @@ struct range* partmat2(int size, int numthr)
                 allocation[curthread]++;
                 remainder--;
                 if (curthread == numthr) curthread = 0;
-        }
-
-        // work out start/end points
-        struct range *ranges = malloc(numthr * sizeof(struct range));
-        for (i = 0; i < numthr; i++) {
-                if (i == 0) {
-                        ranges[i].start = 1;
-                        ranges[i].end = ranges[i].start
-                                + allocation[i];
-                } else {
-                        ranges[i].start = ranges[i - 1].start
-                                + allocation[i - 1];
-                        ranges[i].end = ranges[i].start
-                                + allocation[i];
-                }
-        }
-        free(allocation);
-        return ranges;
-}
-struct range* partmat(int size, int numthr)
-{
-        int isize = inrsize(size);
-        int unallocated = isize;
-        int currthr = 0;
-        int i;
-
-        int *allocation = malloc(isize * sizeof(int));
-        for (i = 0; i < isize; i++) {
-                allocation[i] = 0;
-        }
-
-        while (unallocated > 0) {
-                allocation[currthr]++;
-                unallocated--;
-                currthr++;
-                if (currthr == numthr) currthr = 0;
         }
 
         // work out start/end points

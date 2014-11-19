@@ -184,7 +184,7 @@ int main(int argc, char **argv)
         initmats(mats, arr, size);
 
         // Partition matrix so each thread works equally
-        struct range *ranges = partmat(size, numthr);
+        struct range *ranges = partmat2(size, numthr);
 
         // wrap up mats, range and precision into single struct
         struct work *w = malloc(numthr * sizeof(struct work));
@@ -199,6 +199,8 @@ int main(int argc, char **argv)
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
+        printmat(mats);
+        printf("\n");
         // main loop
         int numits = 0;
         do {
@@ -227,6 +229,9 @@ int main(int argc, char **argv)
 
                 // swap matrices
                 swap(mats);
+                printmat(mats);
+                printf("\n");
+                sleep(1);
 
                 // prevent threads from restarting
                 ready = 0;
@@ -240,6 +245,8 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
+        printmat(mats);
+        printf("\n");
 
         // deallocate memory
         freemat(mats->imat, mats->size);

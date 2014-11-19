@@ -137,6 +137,53 @@ int inrsize(int size)
  * this will allow each thread to work on an approximately
  * even amount of data
  */
+struct range* partmat2(int size, int numthr)
+{
+        // split into equal chunks + a remainder
+        // each thread gets a chunk, assign one of
+        // the remaining rows to each thread in turn
+        // until there are no more left to give out
+        int isize = inrsize(size);
+        int chunksize = isize / numthr;
+        int remainder = isize % numthr;
+        int i;
+
+        printf("Size: %d, T: %d, cs: %d, r: %d\n",
+                        isize,
+                        numthr,
+                        chunksize,
+                        remainder);
+
+        // give each thread one of the equal sized chunks
+        int *allocation = malloc(numthr * sizeof(int));
+        for (i = 0; i < numthr; i++) {
+                allocation[i] = chunksize;
+        }
+
+        int curthread = 0;
+        while (remainder > 0) {
+                allocation[curthread]++;
+                remainder--;
+                if (curthread == numthr) curthread = 0;
+        }
+
+        // work out start/end points
+        struct range *ranges = malloc(numthr * sizeof(struct range));
+        for (i = 0; i < numthr; i++) {
+                if (i == 0) {
+                        ranges[i].start = 1;
+                        ranges[i].end = ranges[i].start
+                                + allocation[i];
+                } else {
+                        ranges[i].start = ranges[i - 1].start
+                                + allocation[i - 1];
+                        ranges[i].end = ranges[i].start
+                                + allocation[i];
+                }
+        }
+        free(allocation);
+        return ranges;
+}
 struct range* partmat(int size, int numthr)
 {
         int isize = inrsize(size);

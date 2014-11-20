@@ -42,6 +42,24 @@ int* createrandom(int length)
 }
 
 /*
+ * Create L-matrix
+ */
+int * createl(int size)
+{
+        int i;
+        int length = size * size;
+        int *arr = malloc(length * sizeof(int));
+        for (i = 0; i < length; i++) {
+                if (i < size || i % size == 0)
+                        arr[i] = 1;
+                else {
+                        arr[i] = 0;
+                }
+        }
+        return arr;
+}
+
+/*
  * Create an array and fill with values from argv
  */
 int* createarr(int argc, char **argv, int length) {

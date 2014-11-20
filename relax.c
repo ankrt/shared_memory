@@ -174,7 +174,8 @@ int main(int argc, char **argv)
                 lenarr = size * size;
         }
         if (argc == 4) {
-                arr = createrandom(lenarr);
+                /*arr = createrandom(lenarr);*/
+                arr = createl(size);
         } else {
                 arr = createarr(argc, argv, lenarr);
         }
@@ -200,6 +201,8 @@ int main(int argc, char **argv)
         }
 
         // main loop
+        /*printmat(mats);*/
+        /*printf("\n");*/
         int numits = 0;
         do {
                 // wait for all threads to become ready
@@ -227,6 +230,9 @@ int main(int argc, char **argv)
 
                 // swap matrices
                 swap(mats);
+                /*printmat(mats);*/
+                /*printf("\n");*/
+                /*sleep(1);*/
 
                 // prevent threads from restarting
                 ready = 0;
@@ -240,6 +246,8 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
+        /*printmat(mats);*/
+        /*printf("\n");*/
 
         // deallocate memory
         freemat(mats->imat, mats->size);

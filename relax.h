@@ -50,9 +50,9 @@ int * createl(int size)
         int length = size * size;
         int *arr = malloc(length * sizeof(int));
         for (i = 0; i < length; i++) {
-                if (i < size || i % size == 0)
+                if (i < size || i % size == 0) {
                         arr[i] = 1;
-                else {
+                } else {
                         arr[i] = 0;
                 }
         }

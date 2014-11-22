@@ -174,8 +174,8 @@ int main(int argc, char **argv)
                 lenarr = size * size;
         }
         if (argc == 4) {
-                /*arr = createrandom(lenarr);*/
-                arr = createl(size);
+                arr = createrandom(lenarr);
+                /*arr = createl(size);*/
         } else {
                 arr = createarr(argc, argv, lenarr);
         }
@@ -200,9 +200,9 @@ int main(int argc, char **argv)
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
-        // main loop
         /*printmat(mats);*/
         /*printf("\n");*/
+        // main loop
         int numits = 0;
         do {
                 // wait for all threads to become ready
@@ -246,8 +246,6 @@ int main(int argc, char **argv)
 
                 numits++;
         } while (check());
-        /*printmat(mats);*/
-        /*printf("\n");*/
 
         // deallocate memory
         freemat(mats->imat, mats->size);

@@ -5,15 +5,15 @@ import os
 import sys
 import time
 
-ARRAY_MIN_SIZE = 10
-ARRAY_MAX_SIZE = 151
-ARRAY_INCREMENT = 10
+ARRAY_MIN_SIZE = 200
+ARRAY_MAX_SIZE = 1001
+ARRAY_INCREMENT = 1
 
 MIN_PRECISION = 10
-MAX_PRECISION = 1000000
+MAX_PRECISION = 10
 
-MIN_THREADS = 1
-MAX_THREADS = 9
+MIN_THREADS = 4
+MAX_THREADS = 5
 
 NUM_TESTS = 1
 
@@ -22,7 +22,8 @@ random.seed()
 def genNums(size):
     numlist = ''
     for i in range(size * size):
-        numlist += str(random.randint(0, 10))
+        #numlist += str(random.randint(0, 10))
+        numlist += str(random.randint(0, 1))
     return numlist
 
 def printInfo(count, size, threads, precision, output, et):
@@ -41,7 +42,8 @@ def printInfo(count, size, threads, precision, output, et):
 tArrays = []
 tSizes = []
 for size in range(ARRAY_MIN_SIZE, ARRAY_MAX_SIZE, ARRAY_INCREMENT):
-    tArrays.append(genNums(size))
+    #tArrays.append(genNums(size))
+    tArrays.append(1)
     tSizes.append(str(size))
 
 tThreads = []
@@ -67,7 +69,7 @@ for i in range(NUM_TESTS):
                         tSizes[a],
                         t,
                         p],
-                        tArrays[a],
+                        #tArrays[a],
                         )))
                 ts = time.time();
                 output = os.popen(command).read()

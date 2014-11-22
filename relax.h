@@ -36,7 +36,7 @@ int* createrandom(int length)
         //srand(time(NULL));
         for (i = 0; i < length; i++) {
                 //arr[i] = rand() % 10;
-                arr[i] = rand() % 10;
+                arr[i] = rand() % 2;
         }
         return arr;
 }

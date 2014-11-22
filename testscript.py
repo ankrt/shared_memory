@@ -6,16 +6,16 @@ import sys
 import time
 
 ARRAY_MIN_SIZE = 200
-ARRAY_MAX_SIZE = 1001
-ARRAY_INCREMENT = 1
+ARRAY_MAX_SIZE = 5001
+ARRAY_INCREMENT = 20
 
 MIN_PRECISION = 10
 MAX_PRECISION = 10
 
-MIN_THREADS = 4
-MAX_THREADS = 5
+MIN_THREADS = 1
+MAX_THREADS = 9
 
-NUM_TESTS = 1
+NUM_TESTS = 10
 
 random.seed()
 
@@ -32,7 +32,7 @@ def printInfo(count, size, threads, precision, output, et):
     print size, ',',
     print threads, ',',
     print precision, ',',
-    print outputList[0], ',',
+    #print outputList[0], ',',
     print et
 
 #def printOutput(output):
@@ -57,13 +57,14 @@ while precision <= MAX_PRECISION:
     precision = precision * 10
 
 # Headers
-print 'n,size,threads,precision,iterations,walltime'
+print 'n,size,threads,precision,walltime'
 # Run the program
 runCount = 0
-for i in range(NUM_TESTS):
-    for a in range(len(tArrays)):
-        for t in tThreads:
-            for p in tPrecisions:
+for a in range(len(tArrays)):
+    for t in tThreads:
+        for p in tPrecisions:
+            t_cumulative = 0
+            for i in range(NUM_TESTS):
                 command =  ' '.join(list(itertools.chain([
                         './relax.out',
                         tSizes[a],
@@ -71,9 +72,11 @@ for i in range(NUM_TESTS):
                         p],
                         #tArrays[a],
                         )))
-                ts = time.time();
+                t_start = time.time();
                 output = os.popen(command).read()
-                te = time.time();
-                et = te - ts
-                printInfo(runCount, tSizes[a], t, p, output, et)
-                runCount += 1
+                t_end = time.time();
+                t_elapsed = t_end - t_start
+                t_cumulative += t_elapsed
+            t_average = t_cumulative / NUM_TESTS
+            printInfo(runCount, tSizes[a], t, p, output, t_average)
+            runCount += 1

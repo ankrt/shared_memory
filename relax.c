@@ -200,8 +200,6 @@ int main(int argc, char **argv)
                 pthread_create(&thr[i], NULL, (void *) &relax, (void *) &w[i]);
         }
 
-        /*printmat(mats);*/
-        /*printf("\n");*/
         // main loop
         int numits = 0;
         do {
@@ -230,9 +228,6 @@ int main(int argc, char **argv)
 
                 // swap matrices
                 swap(mats);
-                /*printmat(mats);*/
-                /*printf("\n");*/
-                /*sleep(1);*/
 
                 // prevent threads from restarting
                 ready = 0;
@@ -254,6 +249,7 @@ int main(int argc, char **argv)
         free(ranges);
         free(w);
         free(thr);
+        destroy();
 
         printf("%d\n", numits);
         return 0;

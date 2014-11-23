@@ -6,17 +6,18 @@ import sys
 import time
 
 ARRAY_MIN_SIZE = 200
-ARRAY_MAX_SIZE = 5001
+ARRAY_MAX_SIZE = 501
 ARRAY_INCREMENT = 20
 
 MIN_PRECISION = 10
 MAX_PRECISION = 10
 
 MIN_THREADS = 1
-MAX_THREADS = 9
+MAX_THREADS = 5
 
 NUM_TESTS = 10
 
+f = open('data_big.csv', 'w')
 random.seed()
 
 def genNums(size):
@@ -35,9 +36,14 @@ def printInfo(count, size, threads, precision, output, et):
     #print outputList[0], ',',
     print et
 
-#def printOutput(output):
-    #for line in output.stdout:
-        #sys.stdout.write(line)
+def writeInfo(count, size, threads, precision, output, et):
+    value = [count, ',', size, ',', threads, ',', precision, ',', et, '\n']
+    for i in value:
+        f.write(str(i))
+    #f.write('\n')
+    #f.write(str(value))
+
+
 
 tArrays = []
 tSizes = []
@@ -78,5 +84,8 @@ for a in range(len(tArrays)):
                 t_elapsed = t_end - t_start
                 t_cumulative += t_elapsed
             t_average = t_cumulative / NUM_TESTS
-            printInfo(runCount, tSizes[a], t, p, output, t_average)
+            #printInfo(runCount, tSizes[a], t, p, output, t_average)
+            writeInfo(runCount, tSizes[a], t, p, output, t_average)
             runCount += 1
+
+f.close()

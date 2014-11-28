@@ -1,4 +1,4 @@
-sharedMemory
+shared_memory
 ============
 
 Coursework for a Parallel Computing module.

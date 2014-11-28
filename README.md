@@ -1,8 +1,6 @@
 sharedMemory
 ============
 
-CM30225 Parallel Computing coursework 1 - Shared Memory
+Coursework for a Parallel Computing module.
 
-CS Coursework for final year.
-Essentially, the aim is to write a multi-threaded program for a shared memory computer.
-The program will implement 'relaxation' using C and PThreads.
+A shared memory program which implements 'relaxation' using C and PThreads.
